@@ -133,10 +133,11 @@ export default function AiAssistant() {
                <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm bg-gradient-to-br from-blue-100 to-blue-50 text-primary">
                  <Bot className="w-5 h-5" />
                </div>
-               <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm flex space-x-2">
-                 <motion.div className="w-2 h-2 bg-gray-300 rounded-full" animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6 }} />
-                 <motion.div className="w-2 h-2 bg-gray-300 rounded-full" animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }} />
-                 <motion.div className="w-2 h-2 bg-gray-300 rounded-full" animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }} />
+               <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm flex items-center space-x-2">
+                 <span className="text-sm text-slate-500 italic mr-2">HealthSphere AI is thinking...</span>
+                 <motion.div className="w-2 h-2 bg-gray-400 rounded-full" animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6 }} />
+                 <motion.div className="w-2 h-2 bg-gray-400 rounded-full" animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }} />
+                 <motion.div className="w-2 h-2 bg-gray-400 rounded-full" animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }} />
                </div>
              </motion.div>
           )}

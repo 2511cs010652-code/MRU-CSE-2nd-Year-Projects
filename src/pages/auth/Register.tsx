@@ -8,7 +8,7 @@ import { supabase } from '../../lib/supabase';
 
 export default function Register() {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { session, loading, signUp } = useAuth();
   
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -19,10 +19,12 @@ export default function Register() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard');
+    if (session?.user) {
+      navigate('/dashboard', { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [session, navigate]);
+
+  if (loading) return null;
 
   const handleGoogleSignIn = async () => {
     try {
@@ -61,7 +63,7 @@ export default function Register() {
     try {
       setIsSubmitting(true);
       
-      const { data, error: signUpError } = await supabase.auth.signUp({
+      const { data, error: signUpError } = await signUp({
         email,
         password,
       });
@@ -71,7 +73,7 @@ export default function Register() {
       if (data.user) {
         const { error: profileError } = await supabase
           .from('profiles')
-          .insert([
+          .upsert([
             { id: data.user.id, full_name: name, email }
           ]);
           

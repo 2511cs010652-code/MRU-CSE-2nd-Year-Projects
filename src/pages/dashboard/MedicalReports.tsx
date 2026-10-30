@@ -1,40 +1,60 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { UploadCloud, FileText, Brain, AlertCircle, FileBarChart2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { loadUserReports, saveMedicalReport, analyzeReportContent } from '../../services/reportService';
 
 export default function MedicalReports() {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [reports, setReports] = useState<any[]>([]);
+  const [selectedReport, setSelectedReport] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [report, setReport] = useState<any>(null);
+  const [fetching, setFetching] = useState(true);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    const fetchReports = async () => {
+      try {
+        setFetching(true);
+        const data = await loadUserReports();
+        setReports(data || []);
+        if (data && data.length > 0) {
+          setSelectedReport(data[0]);
+        }
+      } catch (error) {
+        console.error('Failed to load reports:', error);
+      } finally {
+        setFetching(false);
+      }
+    };
+    fetchReports();
+  }, []);
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    setSelectedFile(file);
     setLoading(true);
-    setReport(null);
 
-    // Simulate analysis loading for 1.5 seconds
-    setTimeout(() => {
-      setReport({
-        name: file.name,
-        analysis: `
-- **Hemoglobin:** 14.2 g/dL (Normal)
-- **White Blood Cells:** Mildly elevated
-- **Platelets:** Normal
-- **Vitamin D:** 22 ng/mL (Low)
-- **Cholesterol:** 185 mg/dL (Normal)
-- **Glucose:** 88 mg/dL (Normal)
-
-**Recommendation:**
-Maintain hydration, rest adequately, increase sunlight exposure for Vitamin D, and repeat blood tests if fever or fatigue persists for more than 5 days.
-        `
-      });
+    try {
+      // 1. Analyze with Gemini
+      const analysisText = await analyzeReportContent(file);
+      
+      // 2. Save to DB
+      const newReport = await saveMedicalReport(file.name, analysisText);
+      
+      // 3. Update UI
+      setReports((prev) => [newReport, ...prev]);
+      setSelectedReport(newReport);
+    } catch (error: any) {
+      console.error('Medical report error:', error);
+      const message = error instanceof Error ? error.message : typeof error === 'string' ? error : JSON.stringify(error, null, 2);
+      alert(`Medical Reports Error:\n${message}`);
+    } finally {
       setLoading(false);
-    }, 1500);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''; // Reset input
+      }
+    }
   };
 
   const handleDragOver = (e: React.DragEvent) => e.preventDefault();
@@ -59,7 +79,7 @@ Maintain hydration, rest adequately, increase sunlight exposure for Vitamin D, a
         <div className="w-full lg:w-[35%] flex flex-col gap-6 h-full">
           <div>
             <h1 className="text-3xl font-poppins font-bold text-slate-900 tracking-tight">Intelligence Workspace</h1>
-            <p className="text-slate-500 mt-1 font-medium text-sm">Upload a PDF to view simulated AI analysis.</p>
+            <p className="text-slate-500 mt-1 font-medium text-sm">Upload a PDF to view AI analysis and save securely.</p>
           </div>
 
           <div className="bg-white border border-slate-200 rounded-[20px] p-6 shadow-sm flex-shrink-0">
@@ -80,29 +100,47 @@ Maintain hydration, rest adequately, increase sunlight exposure for Vitamin D, a
                 <UploadCloud className="w-6 h-6" />
               </div>
               <p className="font-bold text-slate-800 text-sm mb-1">Click or drag PDF to upload</p>
-              <p className="text-xs text-slate-500 font-medium">For Demo Purposes Only</p>
+              <p className="text-xs text-slate-500 font-medium">Powered by Gemini AI</p>
             </div>
           </div>
 
           <div className="bg-white border border-slate-200 rounded-[20px] flex-1 overflow-y-auto hide-scrollbar shadow-sm p-4 min-h-0">
-             {selectedFile ? (
-               <div className="p-4 rounded-xl flex items-center gap-4 border bg-primary/5 border-primary/20 shadow-sm">
-                 <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary text-white shadow-md">
-                   <FileText className="w-6 h-6" />
-                 </div>
-                 <div className="flex-1 min-w-0">
-                   <h4 className="text-sm font-bold truncate text-primary">
-                     {selectedFile.name}
-                   </h4>
-                   <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
-                     {loading ? 'Analyzing...' : 'Analysis Complete'}
-                   </p>
-                 </div>
+             {fetching ? (
+               <div className="flex justify-center items-center h-full text-slate-400 font-medium">
+                 Loading reports...
+               </div>
+             ) : reports.length > 0 ? (
+               <div className="space-y-2">
+                 {reports.map((r) => (
+                   <div 
+                     key={r.id}
+                     onClick={() => setSelectedReport(r)}
+                     className={`p-4 rounded-xl flex items-center gap-4 border shadow-sm cursor-pointer transition-colors ${
+                       selectedReport?.id === r.id 
+                         ? 'bg-primary/5 border-primary/20' 
+                         : 'bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50'
+                     }`}
+                   >
+                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md transition-colors ${
+                       selectedReport?.id === r.id ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500'
+                     }`}>
+                       <FileText className="w-6 h-6" />
+                     </div>
+                     <div className="flex-1 min-w-0">
+                       <h4 className={`text-sm font-bold truncate transition-colors ${selectedReport?.id === r.id ? 'text-primary' : 'text-slate-800'}`}>
+                         {r.report_name}
+                       </h4>
+                       <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
+                         {r.uploaded_at || r.created_at ? new Date(r.uploaded_at || r.created_at).toLocaleDateString() : 'Just now'}
+                       </p>
+                     </div>
+                   </div>
+                 ))}
                </div>
              ) : (
                <div className="h-full flex flex-col items-center justify-center text-slate-500 font-medium p-8 text-center">
                  <FileBarChart2 className="w-10 h-10 text-slate-300 mb-3" />
-                 <p>No document selected.</p>
+                 <p>No reports found.</p>
                </div>
              )}
           </div>
@@ -116,15 +154,15 @@ Maintain hydration, rest adequately, increase sunlight exposure for Vitamin D, a
           </div>
 
           <div className="bg-white border border-slate-200 rounded-[20px] shadow-sm flex-1 flex flex-col overflow-hidden relative min-h-0">
-            {!selectedFile ? (
+            {loading ? (
+               <div className="flex-1 flex items-center justify-center flex-col text-slate-400">
+                 <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
+                 <p className="font-medium text-lg text-slate-500">Analyzing document with Gemini AI...</p>
+               </div>
+            ) : !selectedReport ? (
                <div className="flex-1 flex items-center justify-center flex-col text-slate-400">
                  <FileBarChart2 className="w-16 h-16 mb-4 opacity-20" />
                  <p className="font-medium text-lg text-slate-500">Select a report to view AI analysis.</p>
-               </div>
-            ) : loading ? (
-               <div className="flex-1 flex items-center justify-center flex-col text-slate-400">
-                 <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
-                 <p className="font-medium text-lg text-slate-500">Analyzing document...</p>
                </div>
             ) : (
                <div className="flex-1 overflow-y-auto hide-scrollbar p-6 lg:p-8 flex flex-col">
@@ -139,12 +177,12 @@ Maintain hydration, rest adequately, increase sunlight exposure for Vitamin D, a
                         <span className="text-sm font-bold uppercase tracking-wider text-primary">AI Diagnostic Summary</span>
                       </div>
                       <div className="text-[15px] leading-relaxed text-slate-200 font-medium whitespace-pre-wrap prose prose-sm prose-invert max-w-none prose-p:leading-relaxed prose-headings:font-bold prose-a:text-blue-400">
-                        <ReactMarkdown>{report?.analysis || ''}</ReactMarkdown>
+                        <ReactMarkdown>{selectedReport?.ai_analysis || selectedReport?.analysis || ''}</ReactMarkdown>
                       </div>
                     </div>
                  </div>
 
-                 {/* Fake Biomarker Cards */}
+                 {/* Hardcoded Biomarker Cards for Display Consistency */}
                  <h3 className="font-poppins font-bold text-xl text-slate-900 mb-4 flex-shrink-0">Extracted Biomarkers</h3>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-shrink-0">
                     

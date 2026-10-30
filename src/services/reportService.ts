@@ -9,7 +9,7 @@ export async function saveMedicalReport(fileName: string, analysisText: string) 
   const payload = {
     user_id: user.id,
     report_name: fileName,
-    analysis: analysisText,
+    ai_analysis: analysisText,
     uploaded_at: new Date().toISOString(),
   };
 
@@ -51,7 +51,7 @@ export async function loadUserReports() {
     .from("health_reports")
     .select("*")
     .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
+    .order("uploaded_at", { ascending: false });
 
   if (error) {
     console.error("ERROR:", error);

@@ -8,7 +8,7 @@ import { supabase } from '../../lib/supabase';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { session, loading, signIn } = useAuth();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,11 +16,8 @@ export default function Login() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard');
-    }
-  }, [isAuthenticated, navigate]);
+  // We deliberately removed the automatic session redirect here.
+  // The user will only navigate to /dashboard after manually logging in via handleSubmit.
 
   const handleGoogleSignIn = async () => {
     try {
@@ -53,13 +50,15 @@ export default function Login() {
 
     try {
       setIsSubmitting(true);
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { error: signInError } = await signIn({
         email,
         password,
       });
 
       if (signInError) throw signInError;
       
+      // Successfully authenticated manually
+      navigate('/dashboard', { replace: true });
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'An error occurred during login.');

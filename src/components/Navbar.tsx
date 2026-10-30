@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Menu, X, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Logo from './Logo';
+import { supabase } from '../lib/supabase';
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -38,12 +40,16 @@ export default function Navbar() {
               <Link to="/login">
                 <span className="text-sm font-bold text-slate-700 hover:text-primary transition-colors px-2">Sign In</span>
               </Link>
-              <Link to="/register">
-                <button className="flex items-center space-x-1.5 px-5 py-2.5 bg-slate-900 text-white rounded-full text-sm font-bold hover:bg-slate-800 hover:shadow-md hover:-translate-y-0.5 transition-all">
-                  <span>Get Started</span>
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </Link>
+              <button 
+                onClick={async () => {
+                  // Explicitly sign out of any stale sessions to prevent auto-redirect
+                  await supabase.auth.signOut();
+                  navigate('/login');
+                }}
+                className="flex items-center space-x-1.5 px-5 py-2.5 bg-slate-900 text-white rounded-full text-sm font-bold hover:bg-slate-800 hover:shadow-md hover:-translate-y-0.5 transition-all">
+                <span>Get Started</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
 
             {/* Mobile Menu Button */}
@@ -91,11 +97,15 @@ export default function Navbar() {
                     Sign In
                   </button>
                 </Link>
-                <Link to="/register" onClick={() => setMobileMenuOpen(false)}>
-                  <button className="w-full py-3.5 text-center font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 transition-colors">
-                    Get Started
-                  </button>
-                </Link>
+                <button 
+                  onClick={async () => {
+                    setMobileMenuOpen(false);
+                    await supabase.auth.signOut();
+                    navigate('/login');
+                  }}
+                  className="w-full py-3.5 text-center font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 transition-colors">
+                  Get Started
+                </button>
               </div>
             </motion.div>
           </>
